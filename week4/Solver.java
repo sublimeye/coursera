@@ -8,6 +8,10 @@ public class Solver {
     public Solver(Board initial) {
     }
 
+    public static void main(String[] args) {
+
+    }
+
     public boolean isSolvable() {
         return false;
     }
@@ -17,10 +21,6 @@ public class Solver {
     }
 
     public Iterable<Board> solution() {
-        
-    }
-
-    public static void main(String[] args) {
 
     }
 }

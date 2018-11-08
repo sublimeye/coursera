@@ -18,6 +18,10 @@ public class Board {
         this.twin = new Board(blocks);
     }
 
+    public static void main(String[] args) {
+
+    }
+
     // board dimension n
     public int dimensions() {
         return this.n;
@@ -48,16 +52,12 @@ public class Board {
         return false;
     }
 
-    // all neighboring boards
-    public Iterable<Board> neighbors() {
-    }
-
     // string representation of this board (in the output format specified below)
     public String toString() {
         return "";
     }
 
-    public static void main(String[] args) {
-
+    // all neighboring boards
+    public Iterable<Board> neighbors() {
     }
 }
