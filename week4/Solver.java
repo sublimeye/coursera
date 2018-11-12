@@ -21,6 +21,6 @@ public class Solver {
     }
 
     public Iterable<Board> solution() {
-
+        return null;
     }
 }
