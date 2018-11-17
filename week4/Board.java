@@ -10,9 +10,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 public class Board {
+    private final int[][] blocks;
     private Board twin;
-    private int n;
-    private int[][] blocks;
     private int manhattanCost;
     private int hammingCost;
     private int[] empty;
@@ -26,7 +25,6 @@ public class Board {
 
         this.empty = new int[2];
         this.blocks = cloneBoard(blocks);
-        this.n = blocks.length;
         calculatePriority(blocks);
     }
 
@@ -80,8 +78,8 @@ public class Board {
 
         System.out.println("manahttan expected 10, got: " + b.manhattan());
         assert (b.manhattan() == 10);
-        System.out.println("dimensions expected 3, got: " + b.dimensions());
-        assert (b.dimensions() == 3);
+        System.out.println("dimension expected 3, got: " + b.dimension());
+        assert (b.dimension() == 3);
         assert (b.equals(bcopy));
         System.out.println("b equals bcopy: ");
         assert (!b.equals(broken));
@@ -101,13 +99,25 @@ public class Board {
         }
     }
 
-    // a board that is obtained by exchanging any pair of blocks
+    // a board that is obtained by exchanging any pair of board-items
     public Board twin() {
         if (this.twin == null) {
+            int n = this.dimension();
+            boolean initialEmpty = blocks[0][0] == 0 || blocks[0][1] == 0;
             int[][] twinBlocks = cloneBoard(blocks);
-            int swap = twinBlocks[0][0];
-            twinBlocks[0][0] = twinBlocks[0][1];
-            twinBlocks[0][1] = swap;
+
+            if (initialEmpty) {
+                int swap = twinBlocks[0][0];
+                twinBlocks[0][0] = twinBlocks[0][1];
+                twinBlocks[0][1] = swap;
+            }
+            else {
+                int row = n - 1;
+                int col = n - 1;
+                int swap = twinBlocks[row][col];
+                twinBlocks[row][col] = twinBlocks[row][col - 1];
+                twinBlocks[row][col - 1] = swap;
+            }
             this.twin = new Board(twinBlocks);
         }
 
@@ -125,8 +135,8 @@ public class Board {
     }
 
     // board dimension n
-    public int dimensions() {
-        return n;
+    public int dimension() {
+        return blocks.length;
     }
 
     // does this board equal y?
@@ -137,9 +147,10 @@ public class Board {
 
         Board that = (Board) y;
 
-        if (that.dimensions() != this.dimensions()) return false;
+        if (that.dimension() != this.dimension()) return false;
         if (that.manhattan() != this.manhattan()) return false;
 
+        int n = this.dimension();
         for (int row = 0; row < n; row++) {
             for (int col = 0; col < n; col++) {
                 if (that.blocks[row][col] != this.blocks[row][col]) return false;
@@ -153,13 +164,9 @@ public class Board {
         return manhattanCost == 0;
     }
 
-    // all neighboring boards
-    public Iterable<Board> neighbors() {
-        return new Neighbors(this);
-    }
-
     // string representation of this board (in the output format specified below)
     public String toString() {
+        int n = this.dimension();
         StringBuilder b = new StringBuilder(n * (n + 3) + n);
         b.append(n + "\n");
         for (int row = 0; row < blocks.length; row++) {
@@ -176,12 +183,18 @@ public class Board {
         return b.toString();
     }
 
-    private class Neighbors implements Iterable<Board> {
-        private Queue<Board> boards = new Queue<>();
+    // all neighboring boards
+    public Iterable<Board> neighbors() {
+        return new Neighbors(this);
+    }
+
+    private static class Neighbors implements Iterable<Board> {
+        private final Queue<Board> boards = new Queue<>();
 
         public Neighbors(Board b) {
             // get row|col from b.empty
             int[][] bcopy = b.cloneBoard(b.blocks);
+            int n = b.dimension();
             int row = b.empty[0];
             int col = b.empty[1];
 
