@@ -108,10 +108,17 @@ public class Board {
     private int calcManhattan() {
         int length = this.dimension();
         int manhattan = 0;
+        int[] empty = this.findEmpty();
+
         // iterate over all N elements out of place if:
         for (int row = 0; row < length; row++) {
             for (int col = 0; col < length; col++) {
                 int number = blocks[row][col];
+                if (number == 0) {
+                    empty[0] = row;
+                    empty[1] = col;
+                    continue;
+                }
                 int expectedRow = (number - 1) / length;
                 int expectedCol = (number - 1) % length;
                 if (row != expectedRow || col != expectedCol) {
