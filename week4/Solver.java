@@ -122,6 +122,7 @@ public class Solver {
         private final int moves;
         private final Node parent;
         private final Board board;
+        private int manhattan;
 
         public Node(Board board, int moves, Node parent) {
             if (board == null) {
@@ -131,11 +132,12 @@ public class Solver {
             this.moves = moves;
             this.board = board;
             this.parent = parent;
+            this.manhattan = board.manhattan();
         }
 
         public int compareTo(Node that) {
-            return (this.board.manhattan() + this.moves)
-                    - (that.board.manhattan() + that.moves);
+            return (this.manhattan + this.moves)
+                    - (that.manhattan + that.moves);
         }
     }
 }

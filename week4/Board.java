@@ -6,15 +6,9 @@
 
 import edu.princeton.cs.algs4.Queue;
 
-import java.util.Arrays;
-import java.util.Iterator;
-
 public class Board {
     private final int[][] blocks;
-    private Board twin;
-    private int manhattanCost;
-    private int hammingCost;
-    private int[] empty;
+    private final int manhattanDistance;
 
     // construct a board from an n-by-n array of blocks
     // (where blocks[i][j] = block in row i, column j)
@@ -23,9 +17,8 @@ public class Board {
             throw new IllegalArgumentException("cant be null");
         }
 
-        this.empty = new int[2];
         this.blocks = cloneBoard(blocks);
-        calculatePriority(blocks);
+        this.manhattanDistance = this.calcManhattan();
     }
 
     private int[][] cloneBoard(int[][] original) {
@@ -36,45 +29,26 @@ public class Board {
         return cloned;
     }
 
-    private void calculatePriority(int[][] items) {
-        int length = items.length;
-        int hamming = 0;
-        int manhattan = 0;
-        // iterate over all N elements out of place if:
-        for (int row = 0; row < length; row++) {
-            for (int col = 0; col < length; col++) {
-                int number = items[row][col];
-                if (number == 0) {
-                    this.empty[0] = row;
-                    this.empty[1] = col;
-                    continue;
-                }
-                int expectedRow = (number - 1) / items.length;
-                int expectedCol = (number - 1) % items.length;
-                if (row != expectedRow || col != expectedCol) {
-                    hamming++;
-                    manhattan += Math.abs(expectedRow - row) + Math.abs(expectedCol - col);
-                }
-            }
-        }
-        this.hammingCost = hamming;
-        this.manhattanCost = manhattan;
-    }
-
     public static void main(String[] args) {
         Board b = new Board(new int[][] { { 8, 1, 3 }, { 4, 0, 2 }, { 7, 6, 5 } });
         Board bcopy = new Board(new int[][] { { 8, 1, 3 }, { 4, 0, 2 }, { 7, 6, 5 } });
         Board broken = new Board(new int[][] { { 1, 2, 3 }, { 4, 5, 6 }, { 8, 7, 0 } });
+        Board brokenTwin = new Board(new int[][] { { 2, 1, 3 }, { 4, 5, 6 }, { 8, 7, 0 } });
+
+        Board zeroInit = new Board(new int[][] { { 0, 3, 2 }, { 4, 5, 6 }, { 8, 7, 1 } });
+        Board zeroInitTwin = new Board(new int[][] { { 0, 3, 2 }, { 4, 5, 6 }, { 8, 1, 7 } });
         Board goal = new Board(new int[][] { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 0 } });
         Board twinb = b.twin();
+
+        System.out.println("twin should swap first or last two");
+        assert (broken.twin().equals(brokenTwin));
+        System.out.println("twin should swap first or last two");
+        assert (zeroInit.twin().equals(zeroInitTwin));
 
         System.out.println("board.toString");
         System.out.println(b.toString());
         System.out.println("hamming expected 5, got: " + b.hamming());
         assert (b.hamming() == 5);
-        int[] bempty = new int[] { 1, 1 };
-        assert (Arrays.equals(b.empty, bempty));
-        System.out.println("empty location: [1,1]" + Arrays.toString(b.empty));
 
         System.out.println("manahttan expected 10, got: " + b.manhattan());
         assert (b.manhattan() == 10);
@@ -86,9 +60,6 @@ public class Board {
         System.out.println("b is not equals broken: ");
         assert (goal.isGoal());
         System.out.println("goal is goal");
-        int[] gempty = new int[] { 2, 2 };
-        assert (Arrays.equals(goal.empty, gempty));
-        System.out.println("empty location: [2,2]" + Arrays.toString(goal.empty));
         assert (!b.equals(twinb));
         System.out.println("twin is different");
 
@@ -101,37 +72,75 @@ public class Board {
 
     // a board that is obtained by exchanging any pair of board-items
     public Board twin() {
-        if (this.twin == null) {
-            int n = this.dimension();
-            boolean initialEmpty = blocks[0][0] == 0 || blocks[0][1] == 0;
-            int[][] twinBlocks = cloneBoard(blocks);
+        int n = this.dimension();
+        boolean initialEmpty = blocks[0][0] == 0 || blocks[0][1] == 0;
+        int[][] twinBlocks = cloneBoard(blocks);
 
-            if (initialEmpty) {
-                int swap = twinBlocks[0][0];
-                twinBlocks[0][0] = twinBlocks[0][1];
-                twinBlocks[0][1] = swap;
-            }
-            else {
-                int row = n - 1;
-                int col = n - 1;
-                int swap = twinBlocks[row][col];
-                twinBlocks[row][col] = twinBlocks[row][col - 1];
-                twinBlocks[row][col - 1] = swap;
-            }
-            this.twin = new Board(twinBlocks);
+        if (!initialEmpty) {
+            int swap = twinBlocks[0][0];
+            twinBlocks[0][0] = twinBlocks[0][1];
+            twinBlocks[0][1] = swap;
         }
-
-        return this.twin;
+        else {
+            int row = n - 1;
+            int col = n - 1;
+            int swap = twinBlocks[row][col];
+            twinBlocks[row][col] = twinBlocks[row][col - 1];
+            twinBlocks[row][col - 1] = swap;
+        }
+        return new Board(twinBlocks);
     }
 
     // number of blocks out of place
     public int hamming() {
-        return hammingCost;
+        int length = this.dimension();
+        int hamming = 0;
+
+        for (int i = 1; i < length * length; i++) {
+            int row = (i - 1) / length;
+            int col = (i - 1) % length;
+            if (i != blocks[row][col]) hamming++;
+        }
+
+        return hamming;
+    }
+
+    private int calcManhattan() {
+        int length = this.dimension();
+        int manhattan = 0;
+        // iterate over all N elements out of place if:
+        for (int row = 0; row < length; row++) {
+            for (int col = 0; col < length; col++) {
+                int number = blocks[row][col];
+                int expectedRow = (number - 1) / length;
+                int expectedCol = (number - 1) % length;
+                if (row != expectedRow || col != expectedCol) {
+                    manhattan += Math.abs(expectedRow - row) + Math.abs(expectedCol - col);
+                }
+            }
+        }
+        return manhattan;
     }
 
     // sum of Manhattan distances between blocks and goal
     public int manhattan() {
-        return manhattanCost;
+        return manhattanDistance;
+    }
+
+    private int[] findEmpty() {
+        int[] empty = new int[] { 0, 0 };
+        int length = this.dimension();
+        for (int row = 0; row < length; row++) {
+            for (int col = 0; col < length; col++) {
+                int number = blocks[row][col];
+                if (number == 0) {
+                    empty[0] = row;
+                    empty[1] = col;
+                    return empty;
+                }
+            }
+        }
+        return empty;
     }
 
     // board dimension n
@@ -147,10 +156,9 @@ public class Board {
 
         Board that = (Board) y;
 
-        if (that.dimension() != this.dimension()) return false;
-        if (that.manhattan() != this.manhattan()) return false;
+        if (that.blocks.length != this.blocks.length) return false;
 
-        int n = this.dimension();
+        int n = blocks.length;
         for (int row = 0; row < n; row++) {
             for (int col = 0; col < n; col++) {
                 if (that.blocks[row][col] != this.blocks[row][col]) return false;
@@ -161,7 +169,7 @@ public class Board {
 
     // is this board the goal board?
     public boolean isGoal() {
-        return manhattanCost == 0;
+        return manhattanDistance == 0;
     }
 
     // string representation of this board (in the output format specified below)
@@ -185,50 +193,42 @@ public class Board {
 
     // all neighboring boards
     public Iterable<Board> neighbors() {
-        return new Neighbors(this);
+        Queue<Board> boards = new Queue<>();
+        Board b = this;
+        int[] empty = this.findEmpty();
+        int[][] bcopy = b.cloneBoard(b.blocks);
+        int n = b.dimension();
+        int row = empty[0];
+        int col = empty[1];
+
+        if (row != 0) {
+            enqueueSwapped(boards, bcopy, row, col, -1, 0);
+        }
+        if (row != n - 1) {
+            enqueueSwapped(boards, bcopy, row, col, 1, 0);
+        }
+
+        if (col != 0) {
+            enqueueSwapped(boards, bcopy, row, col, 0, -1);
+        }
+        if (col != n - 1) {
+            enqueueSwapped(boards, bcopy, row, col, 0, 1);
+        }
+
+        return boards;
     }
 
-    private static class Neighbors implements Iterable<Board> {
-        private final Queue<Board> boards = new Queue<>();
+    private void enqueueSwapped(Queue<Board> queue, int[][] bcopy, int row, int col, int roff,
+                                int coff) {
+        int tmp = bcopy[row][col];
 
-        public Neighbors(Board b) {
-            // get row|col from b.empty
-            int[][] bcopy = b.cloneBoard(b.blocks);
-            int n = b.dimension();
-            int row = b.empty[0];
-            int col = b.empty[1];
-
-            if (row != 0) {
-                enqueueSwapped(bcopy, row, col, -1, 0);
-            }
-            if (row != n - 1) {
-                enqueueSwapped(bcopy, row, col, 1, 0);
-            }
-
-            if (col != 0) {
-                enqueueSwapped(bcopy, row, col, 0, -1);
-            }
-            if (col != n - 1) {
-                enqueueSwapped(bcopy, row, col, 0, 1);
-            }
-        }
-
-        private void enqueueSwapped(int[][] bcopy, int row, int col, int roff, int coff) {
-            int tmp = bcopy[row][col];
-
-            int swappable = bcopy[row + roff][col + coff];
-            // enqueueSwapped
-            bcopy[row + roff][col + coff] = tmp;
-            bcopy[row][col] = swappable;
-            this.boards.enqueue(new Board(bcopy));
-            // revert
-            bcopy[row + roff][col + coff] = swappable;
-            bcopy[row][col] = tmp;
-        }
-
-        @Override
-        public Iterator<Board> iterator() {
-            return boards.iterator();
-        }
+        int swappable = bcopy[row + roff][col + coff];
+        // enqueueSwapped
+        bcopy[row + roff][col + coff] = tmp;
+        bcopy[row][col] = swappable;
+        queue.enqueue(new Board(bcopy));
+        // revert
+        bcopy[row + roff][col + coff] = swappable;
+        bcopy[row][col] = tmp;
     }
 }
