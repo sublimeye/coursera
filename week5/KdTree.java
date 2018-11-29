@@ -5,10 +5,12 @@ import edu.princeton.cs.algs4.StdDraw;
 
 public class KdTree {
     private static final boolean RED = true;
-    private Node root = null;
-    private int size = 0;
+    private Node root;
+    private int size;
 
     public KdTree() {
+        root = null;
+        size = 0;
     }
 
     public static void main(String[] args) {
@@ -16,6 +18,30 @@ public class KdTree {
         assert (kt.size() == 0);
         assert (kt.root == null);
 
+        /**
+         * TODO: failing test
+         *   * input10.txt
+         *     - student   nearest() = (0.144, 0.179)
+         *     - reference nearest() = (0.144, 0.179)
+         *     - performs incorrect traversal of kd-tree during call to nearest()
+         *     - query point = (0.25, 0.28)
+         *     - sequence of points inserted:
+         *       A  0.372 0.497
+         *       B  0.564 0.413
+         *       C  0.226 0.577
+         *       D  0.144 0.179
+         *       E  0.083 0.51
+         *       F  0.32 0.708
+         *       G  0.417 0.362
+         *       H  0.862 0.825
+         *       I  0.785 0.725
+         *       J  0.499 0.208
+         *     - student sequence of kd-tree nodes involved in calls to Point2D methods:
+         *       A C D E B G H I
+         *     - reference sequence of kd-tree nodes involved in calls to Point2D methods:
+         *       A C D E B G
+         *     - failed on trial 47 of 1000
+         */
         kt.insert(new Point2D(7, 2));
         kt.insert(new Point2D(5, 4));
         kt.insert(new Point2D(2, 3));
@@ -27,7 +53,9 @@ public class KdTree {
         kt.insert(new Point2D(2, 3));
         kt.insert(new Point2D(4, 7));
         kt.insert(new Point2D(9, 6));
-        System.out.println("Size should not change when same points are added");
+        System.out.println(
+                "Size should not change when same points are " + "added" + kt
+                        .size());
         assert (kt.size() == 5);
 
         System.out.println("Should contain point 9, 6");
@@ -100,34 +128,18 @@ public class KdTree {
         return null;
     }
 
-    private int comparePoints(Point2D p, Point2D nodeP, boolean r) {
-        if (p == null || nodeP == null) throw new IllegalArgumentException();
+    private int comparePoints(Point2D p, Point2D h, boolean r) {
+        if (p == null || h == null) throw new IllegalArgumentException();
+        if (h.compareTo(p) == 0) return 0;
 
-        if (r) {
-            if (p.x() < nodeP.x()) {
-                return -1;
-            }
-            else if (nodeP.compareTo(p) != 0) {
-                return 1;
-            }
-        }
-        else {
-            if (p.y() < nodeP.y()) {
-                return -1;
-            }
-            else if (nodeP.compareTo(p) != 0) {
-                return 1;
-            }
-        }
-        return 0;
+        boolean lessThan = r ? p.x() < h.x() : p.y() < h.y();
+        return lessThan ? -1 : 1;
     }
 
     // draw all points to standard draw
     public void draw() {
         StdDraw.setPenColor(StdDraw.BLACK);
-
         drawPoints(root);
-
         StdDraw.show();
     }
 
@@ -162,23 +174,17 @@ public class KdTree {
     private void searchRange(Node h, Stack<Point2D> s, RectHV rect) {
         if (h == null) return;
 
-        if (isRed(h)) {
-            if (h.point.x() > rect.xmax()) searchRange(h.left, s, rect);
-            else if (h.point.x() < rect.xmin()) searchRange(h.right, s, rect);
-            else {
-                if (rect.contains(h.point)) s.push(h.point);
-                searchRange(h.left, s, rect);
-                searchRange(h.right, s, rect);
-            }
-        }
+        boolean onLeft = isRed(h) ? h.point.x() > rect.xmax() :
+                         h.point.y() > rect.ymax();
+        boolean onRight = isRed(h) ? h.point.x() < rect.xmin() :
+                          h.point.y() < rect.ymin();
+
+        if (onLeft) searchRange(h.left, s, rect);
+        else if (onRight) searchRange(h.right, s, rect);
         else {
-            if (h.point.y() > rect.ymax()) searchRange(h.left, s, rect);
-            else if (h.point.y() < rect.ymin()) searchRange(h.right, s, rect);
-            else {
-                if (rect.contains(h.point)) s.push(h.point);
-                searchRange(h.left, s, rect);
-                searchRange(h.right, s, rect);
-            }
+            if (rect.contains(h.point)) s.push(h.point);
+            searchRange(h.left, s, rect);
+            searchRange(h.right, s, rect);
         }
     }
     // a nearest neighbor in the set to point p; null if the set is empty
@@ -191,13 +197,7 @@ public class KdTree {
      * than the distance between the query point and the rectangle corresponding
      * to a node, there is no need to explore that node (or its subtrees).  That
      * is, search a node only only if it might contain a point  that is closer
-     * than the best one found so far. The effectiveness of  the pruning rule
-     * depends on quickly finding a nearby point.  To do this, organize the
-     * recursive method so that when there are  two possible subtrees to go
-     * down, you always choose the subtree that  is on the same side of the
-     * splitting line as the query point as the  first subtree to explore—the
-     * closest point found while exploring the  first subtree may enable pruning
-     * of the second subtree.
+     * than the best one found so far.
      *
      * @param p Point2D central point to search for
      * @return Point2D nearest point to provided point
@@ -208,41 +208,29 @@ public class KdTree {
         return searchNearest(root, p, root.point);
     }
 
-    private Point2D searchNearest(Node h, Point2D p, Point2D minP) {
-        if (h == null) return minP;
+    private Point2D searchNearest(Node h, Point2D p, Point2D champ) {
+        if (h == null) return champ;
+        if (h.point.equals(p)) return p;
 
-        double xdist = Math.abs(h.point.x() - p.x());
-        double ydist = Math.abs(h.point.y() - p.y());
+        double toLine = isRed(h) ? h.point.x() - p.x() : h.point.y() - p.y();
+        boolean lessThan = isRed(h) ? p.x() < h.point.x() : p.y() < h.point.y();
+        Node first = lessThan ? h.left : h.right;
+        Node second = lessThan ? h.right : h.left;
 
-        double candidate = h.point.distanceTo(p);
-        double champion = minP.distanceTo(p);
+        double champDist = champ.distanceSquaredTo(p);
+        // TODO: optimize
+        // do not compute the distance between the query point and the point
+        // in a node
+        // if the closest point discovered so far is closer than the distance between
+        // the query point and the rectangle corresponding to the node
+        if (h.point.distanceSquaredTo(p) < champDist) champ = h.point;
 
-        if (candidate < champion) minP = h.point;
-
-        int cmp = comparePoints(p, h.point, isRed(h));
-
-        // query(p) ... | LINE (closer left)
-        if (cmp < 0) {
-            minP = searchNearest(h.left, p, minP);
-            champion = minP.distanceTo(p);
-            boolean champCloser = isRed(h) ? champion < xdist :
-                                  champion < ydist;
-            if (!champCloser) {
-                minP = searchNearest(h.right, p, minP);
-            }
-        }
-        // LINE | ... query(p) (closer right)
-        else {
-            minP = searchNearest(h.right, p, minP);
-            champion = minP.distanceTo(p);
-            boolean champCloser = isRed(h) ? champion < xdist :
-                                  champion < ydist;
-            if (!champCloser) {
-                minP = searchNearest(h.left, p, minP);
-            }
+        champ = searchNearest(first, p, champ);
+        if (champDist > toLine * toLine) {
+            champ = searchNearest(second, p, champ);
         }
 
-        return minP;
+        return champ;
     }
 
     // is node x red; false if x is null ?
@@ -253,7 +241,6 @@ public class KdTree {
 
     private class Node {
         private final Point2D point;
-        // private RectHV rect;
         private Node left, right;
         private final boolean color;
 
@@ -262,7 +249,6 @@ public class KdTree {
             left = null;
             right = null;
             color = c;
-            // rect = r;
         }
     }
 
