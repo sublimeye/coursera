@@ -5,13 +5,15 @@ import edu.princeton.cs.algs4.Stack;
 import edu.princeton.cs.algs4.StdDraw;
 
 public class PointSET {
-    private SET<Point2D> set;
+    private final SET<Point2D> set;
 
     public PointSET() {
         set = new SET<Point2D>();
     }
 
     public static void main(String[] args) {
+        PointSET ps = new PointSET();
+        ps.draw();
     }
 
     public boolean isEmpty() {
@@ -34,7 +36,6 @@ public class PointSET {
 
     public void draw() {
         StdDraw.setPenColor(StdDraw.BLACK);
-        StdDraw.setPenRadius(0.01);
 
         for (Point2D p : set) {
             StdDraw.point(p.x(), p.y());
@@ -71,7 +72,7 @@ public class PointSET {
         for (Point2D sp : set) {
             distance = sp.distanceSquaredTo(p);
 
-            if (distance < closest) {
+            if (distance <= closest) {
                 closest = distance;
                 nearestPoint = sp;
             }
